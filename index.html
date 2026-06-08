@@ -370,6 +370,45 @@ body{
   .app-shell{box-shadow:0 0 0 1px oklch(0 0 0 / 0.04)}
   .overlay-kpi-grid{grid-template-columns:1fr 1fr}
 }
+/* STOCK EDIT WARNING */
+.stock-edit-warning{
+  background:oklch(0.92 0.12 85);
+  color:oklch(0.2 0.03 85);
+  padding:10px 14px;margin-bottom:14px;border-radius:4px;
+  font-family:'Inter',sans-serif;font-size:11px;font-weight:600;
+  display:none;text-align:center;letter-spacing:0.5px;
+}
+.stock-edit-warning.show{display:block}
+.edit-btn{
+  font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
+  background:none;border:1px solid var(--hairline);color:var(--muted);
+  padding:2px 6px;border-radius:3px;cursor:pointer;
+  transition:all 0.2s;
+}
+.edit-btn:hover{background:var(--red);color:var(--paper);border-color:var(--red)}
+.stock-input{
+  width:50px;text-align:right;
+  font-family:'JetBrains Mono',monospace;font-weight:700;
+  font-size:clamp(13px,1.5vw,16px);
+  border:2px solid var(--red);border-radius:3px;
+  padding:2px 4px;background:var(--paper);color:var(--red);
+}
+/* RESTOCK */
+.restock-section{margin-top:clamp(18px,2.5vw,24px);padding-top:clamp(14px,2vw,18px);border-top:2px solid var(--hairline)}
+.restock-section .rs-title{font-family:'DM Serif Display',serif;font-size:clamp(17px,2.2vw,24px);font-style:italic;font-weight:400;margin-bottom:10px}
+.restock-section .rs-title em{font-style:normal;color:var(--red)}
+.restock-table{width:100%;border-collapse:collapse}
+.restock-table thead th{font-family:'Inter',sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);padding:0 0 6px 0;border-bottom:1px solid var(--hairline)}
+.restock-table thead th.r{text-align:right}
+.restock-table tbody td{padding:6px 0;border-bottom:0.5px solid var(--hairline);font-size:clamp(12px,1.3vw,14px)}
+.restock-table tbody td.r{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600}
+.restock-table tbody td.name{font-weight:700}
+.restock-table tbody td.rec{color:oklch(0.5 0.16 150);font-weight:800}
+@media(prefers-color-scheme:dark){
+  .stock-edit-warning{background:oklch(0.25 0.08 85);color:oklch(0.9 0.1 85)}
+}
+.rs-adequate{text-align:center;padding:16px 0;color:var(--faint);font-family:'Noto Serif SC',serif;font-size:14px}
+
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 
 
@@ -428,13 +467,14 @@ body{
       </div>
       <div class="inv-hero-row" id="invHeroRow"></div>
     </div>
+    <div class="stock-edit-warning" id="stockEditWarning">库存已临时修改，刷新后恢复，请通知 Marvis 同步到文件</div>
     <div class="alert-section" id="alertSection">
       <div class="alert-head">库存告急 · 请尽快补货</div>
       <div id="alertItems"></div>
     </div>
     <div class="sec-head">全部<em>品种</em></div>
     <table class="inv-table">
-      <thead><tr><th>品种</th><th class="r">库存</th><th class="r">进价</th><th class="r">成本</th><th class="r">售价</th><th class="r">利润</th></tr></thead>
+      <thead><tr><th>品种</th><th class="r">库存</th><th class="r">进价</th><th class="r">成本</th><th class="r">售价</th><th class="r">利润</th><th class="r">操作</th></tr></thead>
       <tbody id="invBody"></tbody>
       <tfoot id="invFoot"></tfoot>
     </table>
@@ -615,6 +655,9 @@ var ALERT_THRESHOLDS = {
 };
 
 function renderInventory(){
+  var hasEdits = applyInventoryEdits();
+  recalcInvTotals();
+  
   document.getElementById("invTotalBig").textContent = INVENTORY.total_stock;
 
   var topItems = [];
@@ -657,11 +700,13 @@ function renderInventory(){
     var rowCls='';
     if(hl)rowCls=' class="hl"';
     else if(m%2===1)rowCls=' class="even"';
-    invHTML += '<tr'+rowCls+'><td class="name'+alertCls+'" onclick="openDetail(\x27'+itm.name+'\x27)">'+itm.name+'</td><td class="r stock'+alertCls+'">'+itm.stock+'</td><td class="r">'+itm.cost_price+'</td><td class="r cost">'+itm.cost.toFixed(1)+'</td><td class="r price">'+itm.price.toFixed(1)+'</td><td class="r profit">'+itm.profit.toFixed(1)+'</td></tr>';
+    invHTML += '<tr'+rowCls+'><td class="name'+alertCls+'" onclick="openDetail(\x27'+itm.name+'\x27)">'+itm.name+'</td><td class="r stock'+alertCls+'">'+itm.stock+'</td><td class="r">'+itm.cost_price+'</td><td class="r cost">'+itm.cost.toFixed(1)+'</td><td class="r price">'+itm.price.toFixed(1)+'</td><td class="r profit">'+itm.profit.toFixed(1)+'</td><td class="r edit-cell"><button class="edit-btn" onclick="startEdit(\x27'+itm.name+'\x27,event)">\u6539</button></td></tr>';
   }
   document.getElementById("invBody").innerHTML = invHTML;
-  document.getElementById("invFoot").innerHTML = '<tr><td>\u5408\u8ba1</td><td class="r">'+INVENTORY.total_stock+'</td><td class="r">\u2014</td><td class="r cost">'+INVENTORY.total_cost.toFixed(1)+'</td><td class="r price">'+INVENTORY.total_price.toFixed(1)+'</td><td class="r profit">'+INVENTORY.total_profit.toFixed(1)+'</td></tr>';
+  document.getElementById("invFoot").innerHTML = '<tr><td>\u5408\u8ba1</td><td class="r">'+INVENTORY.total_stock+'</td><td class="r">\u2014</td><td class="r cost">'+INVENTORY.total_cost.toFixed(1)+'</td><td class="r price">'+INVENTORY.total_price.toFixed(1)+'</td><td class="r profit">'+INVENTORY.total_profit.toFixed(1)+'</td><td class="r"></td></tr>';
   document.getElementById("invFooterInfo").textContent = INVENTORY.items.length+'\u4e2a\u54c1\u79cd \u00b7 \u00a5'+INVENTORY.total_price.toFixed(1) + (alerts.length>0 ? ' \u00b7 '+alerts.length+'\u4e2a\u544a\u6025' : '');
+  
+  if(hasEdits){document.getElementById("stockEditWarning").classList.add("show");}
   
   // Profit analysis
   var analysis = [];
@@ -710,7 +755,7 @@ function renderInventory(){
       '</tr>';
   }
   paHTML += '</tbody></table>';
-  document.getElementById("profitAnalysis").innerHTML = paHTML;
+  document.getElementById("profitAnalysis").innerHTML = paHTML + renderRestockList();
 }
 
 function renderPurchase(){
@@ -761,7 +806,124 @@ function renderPurchase(){
   document.getElementById("purFooterInfo").textContent = PURCHASES.length+'\u6761\u8bb0\u5f55 \u00b7 \u00a5'+(function(){var t=0;for(var i=0;i<PURCHASES.length;i++)t+=PURCHASES[i].total_amount;return t.toFixed(1);})();
 }
 
+/* ---- STOCK EDIT ---- */
+var _editConfirmed = false;
+
+function applyInventoryEdits(){
+  var saved = localStorage.getItem("inventoryEdits");
+  if(!saved) return false;
+  try{
+    var edits = JSON.parse(saved);
+    for(var i=0;i<INVENTORY.items.length;i++){
+      var it = INVENTORY.items[i];
+      if(edits[it.name]){
+        it.stock = edits[it.name].stock;
+        it.cost = edits[it.name].cost;
+        it.price = edits[it.name].price;
+        it.profit = edits[it.name].profit;
+      }
+    }
+    return true;
+  }catch(e){return false;}
+}
+
+function recalcInvTotals(){
+  var ts=0,tc=0,tp=0,tpr=0;
+  for(var i=0;i<INVENTORY.items.length;i++){
+    var it=INVENTORY.items[i];
+    ts+=it.stock;tc+=it.cost;tp+=it.price;tpr+=it.profit;
+  }
+  INVENTORY.total_stock=ts;
+  INVENTORY.total_cost=Math.round(tc*10)/10;
+  INVENTORY.total_price=Math.round(tp*10)/10;
+  INVENTORY.total_profit=Math.round(tpr*10)/10;
+}
+
+function startEdit(name, event){
+  event.stopPropagation();
+  _editConfirmed = false;
+  var rows = document.querySelectorAll("#invBody tr");
+  for(var i=0;i<rows.length;i++){
+    var cells = rows[i].querySelectorAll("td");
+    if(cells[0].textContent === name){
+      var oldVal = cells[1].textContent.trim();
+      cells[1].innerHTML = '<input class="stock-input" type="number" value="'+oldVal+'">';
+      var inp = cells[1].querySelector("input");
+      inp.addEventListener("keydown", function(e){
+        if(e.key==="Enter"){_editConfirmed=true;confirmStockEdit(name,e.target);}
+        else if(e.key==="Escape"){cancelStockEdit(e.target,oldVal);}
+      });
+      inp.addEventListener("blur", function(e){
+        setTimeout(function(){if(!_editConfirmed)cancelStockEdit(e.target,oldVal);},150);
+      });
+      inp.focus();inp.select();
+      break;
+    }
+  }
+}
+
+function confirmStockEdit(name, inputEl){
+  var newStock = parseInt(inputEl.value);
+  if(isNaN(newStock)||newStock<0){cancelStockEdit(inputEl, inputEl.defaultValue);return;}
+  var item = null;
+  for(var i=0;i<INVENTORY.items.length;i++){
+    if(INVENTORY.items[i].name===name){item=INVENTORY.items[i];break;}
+  }
+  if(!item) return;
+  var oldStock=item.stock;
+  var unitPrice=Math.round(item.price/oldStock);
+  var newCost=newStock*parseFloat(item.cost_price);
+  var newPrice=newStock*unitPrice;
+  var newProfit=newPrice-newCost;
+  item.stock=newStock;
+  item.cost=Math.round(newCost*10)/10;
+  item.price=Math.round(newPrice*10)/10;
+  item.profit=Math.round(newProfit*10)/10;
+  var edits={};
+  try{edits=JSON.parse(localStorage.getItem("inventoryEdits")||"{}");}catch(e){}
+  edits[name]={stock:newStock,cost:item.cost,price:item.price,profit:item.profit};
+  localStorage.setItem("inventoryEdits",JSON.stringify(edits));
+  recalcInvTotals();
+  renderInventory();
+  document.getElementById("stockEditWarning").classList.add("show");
+}
+
+function cancelStockEdit(inputEl, oldVal){
+  var td = inputEl.parentElement;
+  if(td) td.textContent = oldVal;
+}
+
+function renderRestockList(){
+  var list=[];
+  for(var i=0;i<INVENTORY.items.length;i++){
+    var it=INVENTORY.items[i];
+    var th=ALERT_THRESHOLDS[it.name];
+    if(th===undefined||it.stock>=th) continue;
+    var cp=parseFloat(it.cost_price);
+    var up=Math.round(it.price/it.stock);
+    var margin=(up-cp)/up*100;
+    var suggest=Math.max(th*2-it.stock,5);
+    list.push({name:it.name,stock:it.stock,threshold:th,suggest:suggest,margin:margin});
+  }
+  list.sort(function(a,b){return b.margin-a.margin;});
+  var html='<div class="restock-section"><div class="rs-title"><em>建议补货</em>清单</div>';
+  if(list.length===0){
+    html+='<div class="rs-adequate">所有品种库存充足</div>';
+  }else{
+    html+='<table class="restock-table"><thead><tr><th>品种</th><th class="r">当前库存</th><th class="r">预警线</th><th class="r">建议补货数</th><th class="r">毛利率</th></tr></thead><tbody>';
+    for(var j=0;j<list.length;j++){
+      var l=list[j];
+      html+='<tr><td class="name">'+l.name+'</td><td class="r">'+l.stock+'</td><td class="r">'+l.threshold+'</td><td class="r rec">'+l.suggest+'</td><td class="r">'+l.margin.toFixed(1)+'%</td></tr>';
+    }
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+  return html;
+}
+
 function openDetail(name){
+  applyInventoryEdits();
+  recalcInvTotals();
   document.getElementById("overlayBackdrop").classList.add("show");
   document.body.style.overflow = "hidden";
   document.getElementById("ovTitle").textContent = name;
