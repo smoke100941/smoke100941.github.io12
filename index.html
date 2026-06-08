@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#faf8f5">
+<title>每日账单</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Noto+Serif+SC:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+
+
+:root{
+  --bg:oklch(0.98 0.002 95);
+  --paper:oklch(1 0 0);
+  --ink:oklch(0.12 0.008 95);
+  --red:oklch(0.48 0.21 22);
+  --red-dim:oklch(0.43 0.18 22);
+  --red-wash:oklch(0.94 0.018 22);
+  --red-wash-light:oklch(0.97 0.006 22);
+  --muted:oklch(0.46 0.01 95);
+  --faint:oklch(0.7 0.005 95);
+  --hairline:oklch(0.88 0.004 95);
+  --shadow-vignette:0 1px 2px oklch(0 0 0 / 0.04),0 2px 6px oklch(0 0 0 / 0.03);
+  --shadow-card:0 1px 3px oklch(0 0 0 / 0.06),0 1px 8px oklch(0 0 0 / 0.03);
+  --shadow-float:0 2px 6px oklch(0 0 0 / 0.08),0 4px 16px oklch(0 0 0 / 0.04);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --ease-out-expo:cubic-bezier(0.16,1,0.3,1);
+  --ease-out-quint:cubic-bezier(0.22,1,0.36,1);
+  --ease-spring:cubic-bezier(0.34,1.56,0.64,1);
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:oklch(0.14 0.003 95);
+    --paper:oklch(0.18 0.003 95);
+    --ink:oklch(0.88 0.004 95);
+    --red:oklch(0.58 0.18 22);
+    --red-dim:oklch(0.5 0.15 22);
+    --red-wash:oklch(0.22 0.02 22);
+    --red-wash-light:oklch(0.17 0.008 22);
+    --muted:oklch(0.55 0.008 95);
+    --faint:oklch(0.38 0.005 95);
+    --hairline:oklch(0.26 0.004 95);
+    --shadow-vignette:0 1px 2px oklch(0 0 0 / 0.25),0 2px 6px oklch(0 0 0 / 0.15);
+    --shadow-card:0 1px 3px oklch(0 0 0 / 0.35),0 1px 8px oklch(0 0 0 / 0.2);
+    --shadow-float:0 2px 6px oklch(0 0 0 / 0.4),0 4px 16px oklch(0 0 0 / 0.25);
+    color-scheme:dark;
+  }
+  body{background:oklch(0.08 0.004 95)}
+  .tab-bar{background:oklch(0.12 0.003 95 / 0.92)}
+  .inv-table tbody tr.even td,.pur-table tbody tr.even td{background:oklch(0.16 0.003 95)}
+  .inv-table tbody tr.even:hover td,.pur-table tbody tr.even:hover td{background:oklch(0.165 0.003 95)}
+  .bill-table tbody tr:hover td,.inv-table tbody tr:hover td,.pur-table tbody tr:hover td{background:oklch(0.16 0.002 95)}
+  .sum-table tbody tr:hover td:not(.packs){background:oklch(0.16 0.002 95)}
+  .kpi-cell .val{text-shadow:0 1px 0 oklch(1 1 0 / 0.06)}
+  .hero-card .pack-badge,.inv-total-badge .num,.inv-hero-item .inum,.overlay-kpi .ok-val{text-shadow:0 1px 0 oklch(1 1 0 / 0.05)}
+  .ms-card{background:oklch(0.16 0.003 95)}
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+body{
+  background:oklch(0.94 0.004 95);
+  color:var(--ink);
+  font-family:'Noto Serif SC',serif;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  display:flex;justify-content:center;align-items:flex-start;
+  min-height:100vh;min-height:100dvh;
+  padding-bottom:calc(68px + var(--safe-bottom));
+  overflow-x:hidden;
+}
+.app-shell{
+  width:100%;max-width:520px;
+  background:var(--bg);
+  min-height:100vh;min-height:100dvh;
+  box-shadow:0 0 0 1px oklch(0 0 0 / 0.04),0 0 60px oklch(0 0 0 / 0.05);
+  position:relative;overflow:hidden;
+}
+
+/* TAB BAR */
+.tab-bar{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
+  width:100%;max-width:520px;
+  height:calc(62px + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
+  background:oklch(1 0 0 / 0.92);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-top:0.5px solid var(--hairline);
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  z-index:100;
+}
+.tab{
+  position:relative;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;
+  border:none;background:none;cursor:pointer;
+  font-family:'Inter',sans-serif;font-size:10px;font-weight:600;
+  letter-spacing:0.5px;color:var(--muted);
+  transition:color 0.25s var(--ease-out-expo);
+  -webkit-tap-highlight-color:transparent;
+}
+.tab::after{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%) scaleX(0);
+  width:28px;height:2.5px;background:var(--red);border-radius:0 0 2px 2px;
+  transition:transform 0.3s var(--ease-out-quint);
+}
+.tab.active::after{transform:translateX(-50%) scaleX(1)}
+.tab.active{color:var(--red)}
+.tab:active{opacity:0.6}
+.tab .tab-svg{width:20px;height:20px;transition:transform 0.25s var(--ease-out-expo)}
+.tab.active .tab-svg{transform:translateY(-1px)}
+
+/* VIEWS */
+.view{display:none;padding:clamp(16px,3vw,28px) clamp(16px,3vw,24px)}
+.view.active{display:block;animation:viewIn 0.4s var(--ease-out-expo)}
+@keyframes viewIn{
+  from{opacity:0;transform:scale(0.97) translateY(6px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+
+/* SWIPE INDICATOR */
+.swipe-indicator{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;opacity:0;
+  background:var(--red);color:var(--paper);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:14px;pointer-events:none;z-index:50;
+  transition:opacity 0.2s;
+}
+.swipe-indicator.left{left:8px}
+.swipe-indicator.right{right:8px}
+.swipe-indicator.show{opacity:0.85;animation:swipeInd 0.3s var(--ease-out-expo)}
+@keyframes swipeInd{from{transform:translateY(-50%) scale(0.5)}to{transform:translateY(-50%) scale(1)}}
+
+/* MASTHEAD */
+.masthead, .inv-masthead, .pur-masthead{padding-bottom:clamp(14px,2.5vw,24px);margin-bottom:clamp(16px,2.5vw,24px);position:relative}
+.masthead::after, .inv-masthead::after, .pur-masthead::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3.5px;
+  background:linear-gradient(to right,var(--ink) 0%,var(--ink) 35%,var(--red) 35%,var(--red) 65%,var(--ink) 65%,var(--ink) 100%);
+}
+.masthead-row{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px}
+.masthead h1, .inv-masthead h1, .pur-masthead h1{
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(30px,6.5vw,52px);font-weight:400;font-style:italic;
+  line-height:0.85;letter-spacing:-1.5px;
+}
+.masthead h1 em, .inv-masthead h1 em, .pur-masthead h1 em{font-style:normal;color:var(--red);position:relative}
+.masthead h1 em::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--red)}
+
+/* NAV */
+.nav-bar{display:flex;align-items:center;gap:0}
+.nav-btn{
+  font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;
+  background:var(--ink);color:var(--paper);
+  border:none;width:38px;height:38px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.2s var(--ease-out-expo),transform 0.15s var(--ease-out-expo);
+  line-height:1;
+}
+.nav-btn:first-child{border-radius:3px 0 0 3px}
+.nav-btn:last-child{border-radius:0 3px 3px 0}
+.nav-btn:hover:not(:disabled){background:var(--red-dim);transform:scale(1.05)}
+.nav-btn:active:not(:disabled){transform:scale(0.95)}
+.nav-btn:disabled{background:var(--hairline);color:var(--faint);cursor:default}
+.nav-date{
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(19px,3vw,30px);font-weight:800;
+  min-width:115px;text-align:center;padding:0 10px;line-height:1.15;
+}
+.nav-date small{font-size:0.42em;color:var(--muted);display:block;font-weight:500;letter-spacing:0}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:clamp(16px,2.5vw,22px)}
+.kpi-cell{
+  background:var(--paper);
+  padding:clamp(12px,1.8vw,18px) clamp(10px,1.5vw,14px);text-align:center;
+  box-shadow:var(--shadow-vignette);border:0.5px solid var(--hairline);
+  transition:box-shadow 0.3s var(--ease-out-expo),transform 0.2s var(--ease-out-expo);
+}
+.kpi-cell:hover{box-shadow:var(--shadow-card);transform:translateY(-1px)}
+.kpi-cell .val{font-family:'JetBrains Mono',monospace;font-size:clamp(26px,4vw,40px);font-weight:800;line-height:1}
+.kpi-cell .val.red{color:var(--red)}
+.kpi-cell .lbl{font-family:'Inter',sans-serif;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:5px}
+
+/* HERO CARDS */
+.hero-strip{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr;gap:8px;margin-bottom:clamp(16px,2.5vw,22px)}
+.hero-card{
+  background:var(--paper);
+  padding:clamp(12px,1.8vw,20px) clamp(10px,1.5vw,16px);
+  display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:var(--shadow-vignette);border:0.5px solid var(--hairline);
+  border-top:3px solid var(--red);
+  transition:box-shadow 0.3s var(--ease-out-expo),transform 0.25s var(--ease-out-expo);
+  cursor:pointer;
+}
+.hero-card:hover{box-shadow:var(--shadow-float);transform:translateY(-3px)}
+.hero-card .rank{font-family:'JetBrains Mono',monospace;font-size:8.5px;font-weight:700;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:4px}
+.hero-card .name{font-family:'Noto Serif SC',serif;font-size:clamp(17px,2.8vw,32px);font-weight:900;color:var(--red);line-height:1.05}
+.hero-card .pack-badge{font-family:'JetBrains Mono',monospace;font-size:clamp(22px,4vw,44px);font-weight:800;line-height:1;margin-top:3px}
+.hero-card .pack-badge small{font-size:0.38em;font-weight:500;color:var(--muted);margin-left:2px}
+.hero-card .meta-line{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--faint);margin-top:5px;letter-spacing:-0.3px}
+.hero-card .meta-line span{color:var(--ink);font-weight:700}
+
+/* SECTION HEAD */
+.sec-head{
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(19px,2.6vw,28px);font-style:italic;font-weight:400;
+  padding-bottom:8px;margin-bottom:14px;
+  border-bottom:2px solid var(--ink);letter-spacing:-0.5px;
+  display:flex;align-items:baseline;gap:6px;
+}
+.sec-head em{font-style:normal;color:var(--red)}
+.sec-head::before{content:'■';display:inline-block;font-size:8px;color:var(--red);vertical-align:middle;margin-right:2px;line-height:1}
+
+/* DECO RULE */
+.deco-rule{height:0.5px;background:var(--hairline);margin:clamp(20px,3vw,28px) 0;position:relative}
+.deco-rule::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:24px;height:0.5px;background:var(--red)}
+
+/* TABLES */
+.bill-table,.sum-table,.inv-table,.pur-table,.exp-table{width:100%;border-collapse:collapse}
+.bill-table thead th,.sum-table thead th,.inv-table thead th,.pur-table thead th,.exp-table thead th{
+  font-family:'Inter',sans-serif;font-size:8px;font-weight:600;
+  text-transform:uppercase;letter-spacing:2px;color:var(--muted);
+  padding:0 0 8px 0;border-bottom:1.5px solid var(--hairline);
+}
+.bill-table thead th.r,.sum-table thead th.r,.inv-table thead th.r,.pur-table thead th.r,.exp-table thead th.r{text-align:right}
+.bill-table tbody td,.sum-table tbody td,.inv-table tbody td,.pur-table tbody td,.exp-table tbody td{padding:9px 0;border-bottom:0.5px solid var(--hairline);font-size:clamp(13px,1.5vw,16px);transition:background 0.2s}
+.bill-table tbody td.r,.sum-table tbody td.r,.inv-table tbody td.r,.pur-table tbody td.r,.exp-table tbody td.r{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:clamp(14px,1.6vw,17px)}
+.bill-table tbody td.name,.inv-table tbody td.name{font-weight:800;cursor:pointer;transition:color 0.2s,transform 0.15s;position:relative}
+.bill-table tbody td.name:hover,.inv-table tbody td.name:hover{color:var(--red);transform:translateX(4px)}
+.bill-table tbody td.name::after,.inv-table tbody td.name::after{content:'›';position:absolute;right:-14px;opacity:0;font-family:'Inter',sans-serif;font-weight:700;font-size:16px;transition:opacity 0.2s,transform 0.2s}
+.bill-table tbody td.name:hover::after,.inv-table tbody td.name:hover::after{opacity:1;transform:translateX(3px)}
+.bill-table tbody td.packs{color:var(--red);font-weight:800}
+.bill-table tbody td.rev{font-weight:700}
+.bill-table tbody td.profit{color:var(--red);font-weight:700}
+.bill-table tr.hl td,.inv-table tr.hl td{font-weight:800;background:var(--red-wash-light)}
+.bill-table tr.hl td.name,.inv-table tr.hl td.name{color:var(--red)}
+.bill-table tr.hl:hover td{background:var(--red-wash-light)}
+.bill-table tfoot td,.sum-table tfoot td,.inv-table tfoot td,.pur-table tfoot td,.exp-table tfoot td{padding:14px 0 0 0;border-top:2.5px solid var(--ink);font-family:'JetBrains Mono',monospace;font-weight:800;font-size:clamp(15px,1.8vw,20px)}
+.bill-table tfoot td.r,.inv-table tfoot td.r,.pur-table tfoot td.r,.exp-table tfoot td.r{color:var(--red)}
+.sum-table tbody td.date{font-family:'Noto Serif SC',serif;font-weight:700}
+.sum-table tbody td.packs{color:var(--red);font-weight:700}
+.sum-table tr.active td{background:var(--red-wash);font-weight:800;border-left:3px solid var(--red);padding-left:5px}
+.sum-table tr.active:hover td{background:var(--red-wash)}
+.sum-table tfoot td{color:var(--red)}
+.inv-table tbody td.stock{color:var(--red);font-weight:800}
+.inv-table tbody td.cost{color:var(--muted)}
+.inv-table tbody td.price{font-weight:700}
+.inv-table tbody td.profit{color:var(--red);font-weight:700}
+.inv-table tbody tr.even td,.pur-table tbody tr.even td{background:oklch(0.97 0.003 95)}
+.inv-table tbody tr.even:hover td,.pur-table tbody tr.even:hover td{background:oklch(0.965 0.003 95)}
+
+/* EXPENSE TABLE */
+.exp-section{margin-top:clamp(14px,2.5vw,20px)}
+.exp-table thead th{color:var(--faint);border-bottom:1px solid var(--hairline)}
+.exp-table tbody td{color:var(--muted)}
+.exp-table tbody td.r{color:var(--muted);font-weight:500}
+.exp-table tfoot td{border-top:1.5px solid var(--hairline);color:var(--muted);font-size:clamp(14px,1.5vw,17px)}
+
+/* PURCHASE VIEW */
+.pur-masthead::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3.5px;background:linear-gradient(to right,var(--muted) 0%,var(--muted) 35%,var(--ink) 35%,var(--ink) 65%,var(--muted) 65%,var(--muted) 100%)}
+.pur-table thead th{border-bottom:1.5px solid var(--hairline)}
+.pur-table tbody td.name{font-weight:700}
+.pur-table tbody td.r{color:var(--muted)}
+.pur-table tfoot td.r{color:var(--ink)}
+.pur-empty{text-align:center;padding:clamp(30px,5vw,50px) 0;color:var(--faint);font-family:'Noto Serif SC',serif;font-size:clamp(14px,1.8vw,17px);letter-spacing:0.5px}
+.pur-block{margin-bottom:clamp(22px,3vw,30px)}
+
+/* FOOTER */
+.footer{margin-top:clamp(18px,3vw,30px);padding-top:12px;border-top:1.5px solid var(--hairline);display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--faint);letter-spacing:0.5px}
+
+/* MONTH SUMMARY */
+.month-summary{margin-bottom:clamp(12px,2vw,16px)}
+.month-summary .ms-title{font-family:'Inter',sans-serif;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+.ms-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.ms-card{background:oklch(0.92 0.003 95);padding:clamp(10px,1.5vw,14px) clamp(8px,1vw,10px);text-align:center;box-shadow:var(--shadow-vignette);border:0.5px solid var(--hairline)}
+.ms-card .ms-val{font-family:'JetBrains Mono',monospace;font-size:clamp(18px,3vw,28px);font-weight:800;line-height:1}
+.ms-card .ms-val.red{color:var(--red)}
+.ms-card .ms-lbl{font-family:'Inter',sans-serif;font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:4px}
+
+/* TREND CHART */
+.trend-section{margin:clamp(12px,2vw,20px) 0;padding-top:4px}
+.trend-section .trend-label{font-family:'Inter',sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+#trendChart{width:100%;height:44px;display:block}
+
+/* INVENTORY VIEW */
+.inv-hero-section{margin-bottom:clamp(16px,2.5vw,22px)}
+.inv-total-badge{text-align:center;padding:clamp(20px,3vw,34px) 0 clamp(14px,2vw,22px);border-bottom:1.5px solid var(--hairline);margin-bottom:clamp(14px,2vw,20px)}
+.inv-total-badge .num{font-family:'JetBrains Mono',monospace;font-size:clamp(52px,9vw,80px);font-weight:800;color:var(--red);line-height:1}
+.inv-total-badge .lbl{font-family:'Inter',sans-serif;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:4px;color:var(--muted);margin-top:6px}
+.inv-hero-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:clamp(16px,2.5vw,22px)}
+.inv-hero-item{background:var(--paper);box-shadow:var(--shadow-vignette);border:0.5px solid var(--hairline);border-top:2.5px solid var(--red);padding:12px 8px;text-align:center;transition:box-shadow 0.25s var(--ease-out-expo),transform 0.2s var(--ease-out-expo);cursor:pointer}
+.inv-hero-item:hover{box-shadow:var(--shadow-card);transform:translateY(-2px)}
+.inv-hero-item .iname{font-family:'Noto Serif SC',serif;font-size:clamp(13.5px,1.6vw,18px);font-weight:900;color:var(--red);margin-bottom:5px}
+.inv-hero-item .inum{font-family:'JetBrains Mono',monospace;font-size:clamp(20px,2.8vw,34px);font-weight:800}
+.inv-hero-item .ilbl{font-family:'Inter',sans-serif;font-size:8.5px;color:var(--faint);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-top:2px}
+.back-btn{display:block;width:100%;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;background:var(--ink);color:var(--paper);border:none;padding:13px;cursor:pointer;margin-top:clamp(16px,2.5vw,22px);transition:background 0.2s var(--ease-out-expo),transform 0.15s var(--ease-out-expo);letter-spacing:1px;text-transform:uppercase}
+.back-btn:hover{background:var(--red-dim);transform:translateY(-1px)}
+.back-btn:active{transform:translateY(0)}
+
+/* PROFIT ANALYSIS */
+.profit-analysis{margin-top:clamp(20px,3vw,28px);padding-top:clamp(14px,2vw,20px);border-top:2px solid var(--hairline)}
+.profit-analysis .pa-title{font-family:'DM Serif Display',serif;font-size:clamp(18px,2.4vw,26px);font-style:italic;font-weight:400;margin-bottom:12px;color:var(--ink)}
+.profit-analysis .pa-title em{font-style:normal;color:var(--red)}
+.pa-table{width:100%;border-collapse:collapse}
+.pa-table thead th{font-family:'Inter',sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);padding:0 0 8px 0;border-bottom:1.5px solid var(--hairline)}
+.pa-table thead th.r{text-align:right}
+.pa-table tbody td{padding:8px 0;border-bottom:0.5px solid var(--hairline);font-size:clamp(12px,1.3vw,15px)}
+.pa-table tbody td.r{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:600}
+.pa-table tbody td.name{font-weight:700}
+.pa-table tbody td.green{color:oklch(0.5 0.16 150);font-weight:700}
+.pa-table tbody tr.gray td{color:var(--faint)}
+
+/* ALERT */
+.alert-section{background:var(--red-wash);border-left:3px solid var(--red);padding:clamp(12px,2vw,18px) clamp(12px,2vw,16px);margin-bottom:clamp(16px,2.5vw,22px);display:none;box-shadow:var(--shadow-vignette)}
+.alert-section.show{display:block;animation:alertSlide 0.4s var(--ease-out-expo)}
+@keyframes alertSlide{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.alert-head{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:3px;color:var(--red);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.alert-head::before{content:'';display:inline-block;width:7px;height:7px;background:var(--red);border-radius:50%;animation:alertDot 1.5s ease-in-out infinite}
+@keyframes alertDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.3;transform:scale(0.8)}}
+.alert-item{display:inline-flex;align-items:center;gap:5px;background:var(--red);color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:4px 10px;margin:3px 5px 3px 0;border-radius:3px;transition:transform 0.2s var(--ease-spring)}
+.alert-item:active{transform:scale(0.95)}
+.alert-item .alert-num{opacity:0.75;font-weight:500;font-size:0.9em}
+.inv-table tbody td.alert-cell{color:var(--red);font-weight:800}
+
+/* PRODUCT DETAIL OVERLAY */
+.overlay-backdrop{position:fixed;inset:0;background:oklch(0 0 0 / 0.4);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay-backdrop.show{display:flex;animation:backdropIn 0.25s var(--ease-out-expo)}
+@keyframes backdropIn{from{opacity:0}to{opacity:1}}
+.overlay-panel{width:100%;max-width:520px;max-height:85vh;overflow-y:auto;background:var(--bg);border-radius:16px 16px 0 0;padding:clamp(20px,3vw,28px) clamp(16px,3vw,24px) calc(24px + var(--safe-bottom));box-shadow:var(--shadow-float);animation:panelUp 0.45s var(--ease-spring)}
+@keyframes panelUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.overlay-handle{width:36px;height:4px;background:var(--hairline);border-radius:2px;margin:0 auto 20px}
+.overlay-title{font-family:'Noto Serif SC',serif;font-size:clamp(22px,4vw,36px);font-weight:900;color:var(--red);margin-bottom:4px}
+.overlay-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);margin-bottom:clamp(16px,2vw,20px)}
+.overlay-kpi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:clamp(16px,2vw,20px)}
+.overlay-kpi{background:var(--paper);box-shadow:var(--shadow-vignette);border:0.5px solid var(--hairline);padding:12px 8px;text-align:center}
+.overlay-kpi .ok-val{font-family:'JetBrains Mono',monospace;font-size:clamp(18px,2.5vw,28px);font-weight:800}
+.overlay-kpi .ok-val.red{color:var(--red)}
+.overlay-kpi .ok-lbl{font-family:'Inter',sans-serif;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-top:3px}
+.overlay-close{display:block;width:100%;margin-top:clamp(12px,2vw,18px);font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;background:var(--ink);color:var(--paper);border:none;padding:13px;cursor:pointer;transition:background 0.2s var(--ease-out-expo);letter-spacing:1px;text-transform:uppercase}
+.overlay-close:hover{background:var(--red-dim)}
+#overlayChart{width:100%;height:60px;margin-bottom:clamp(12px,2vw,16px);display:block}
+/* TRAIL TABLE */
+.ov-trail-section{margin-top:clamp(14px,2vw,18px)}
+.ov-trail-title{font-family:'Inter',sans-serif;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+.ov-trail-table{width:100%;border-collapse:collapse}
+.ov-trail-table thead th{font-family:'Inter',sans-serif;font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--faint);padding:5px 0;border-bottom:1px solid var(--hairline);background:oklch(0.96 0.002 95)}
+.ov-trail-table thead th:first-child{text-align:left;padding-left:6px}
+.ov-trail-table thead th:not(:first-child){text-align:right;padding-right:6px}
+.ov-trail-table tbody td{font-family:'JetBrains Mono',monospace;font-size:12px;padding:5px 0;border-bottom:0.5px solid var(--hairline)}
+.ov-trail-table tbody td:first-child{text-align:left;padding-left:6px;font-family:'Noto Serif SC',serif;font-weight:700;font-size:13px}
+.ov-trail-table tbody td:not(:first-child){text-align:right;padding-right:6px}
+.ov-trail-table tbody td.pur-col{color:oklch(0.52 0.16 150);font-weight:700}
+.ov-trail-table tbody td.end-col{font-weight:700}
+@media(prefers-color-scheme:dark){
+  .ov-trail-table thead th{background:oklch(0.2 0.003 95)}
+  .ov-trail-table tbody td.pur-col{color:oklch(0.65 0.16 150)}
+}
+
+@media(max-width:520px){
+  .hero-strip{grid-template-columns:1fr 1fr}
+  .hero-card:nth-child(3){display:none}
+  .hero-card:nth-child(4){display:none}
+  .kpi-row{grid-template-columns:1fr 1fr}
+  .masthead-row{flex-direction:column;align-items:flex-start}
+  .nav-bar{justify-content:center;width:100%}
+  .inv-hero-row{grid-template-columns:1fr 1fr}
+  .app-shell{box-shadow:0 0 0 1px oklch(0 0 0 / 0.04)}
+  .overlay-kpi-grid{grid-template-columns:1fr 1fr}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ====== BILL VIEW ====== -->
+  <div class="view active" id="billView">
+    <div class="masthead">
+      <div class="masthead-row">
+        <h1>每日<em>账单</em></h1>
+        <div class="nav-bar">
+          <button class="nav-btn" id="prevBtn" onclick="prevDay()">←</button>
+          <div class="nav-date" id="dateDisplay"></div>
+          <button class="nav-btn" id="nextBtn" onclick="nextDay()">→</button>
+        </div>
+      </div>
+    </div>
+    <div class="month-summary" id="monthSummary"></div>
+    <div class="kpi-row" id="kpiRow"></div>
+    <div class="hero-strip" id="heroStrip"></div>
+    <div>
+      <div class="sec-head"><em>单品</em>明细</div>
+      <table class="bill-table">
+        <thead><tr><th>品种</th><th class="r">包数</th><th class="r">收入</th><th class="r">利润</th></tr></thead>
+        <tbody id="billBody"></tbody>
+        <tfoot id="billFoot"></tfoot>
+      </table>
+    </div>
+    <div class="exp-section" id="expenseSection"></div>
+    <div class="deco-rule"></div>
+    <div class="trend-section">
+      <div class="trend-label">近7日营收趋势</div>
+      <svg id="trendChart" viewBox="0 0 400 44" preserveAspectRatio="none"></svg>
+    </div>
+    <div>
+      <div class="sec-head"><em>汇总</em>一览</div>
+      <table class="sum-table">
+        <thead><tr><th>日期</th><th class="r">包</th><th class="r">收入</th><th class="r">利润</th><th class="r">率</th></tr></thead>
+        <tbody id="sumBody"></tbody>
+        <tfoot id="sumFoot"></tfoot>
+      </table>
+    </div>
+    <div class="footer"><span>香烟零售核算</span><span id="footerInfo"></span></div>
+  </div>
+
+  <!-- ====== INVENTORY VIEW ====== -->
+  <div class="view" id="invView">
+    <div class="inv-masthead"><h1>盘后<em>库存</em></h1></div>
+    <div class="inv-hero-section">
+      <div class="inv-total-badge">
+        <div class="num" id="invTotalBig">0</div>
+        <div class="lbl">总库存 / 包</div>
+      </div>
+      <div class="inv-hero-row" id="invHeroRow"></div>
+    </div>
+    <div class="alert-section" id="alertSection">
+      <div class="alert-head">库存告急 · 请尽快补货</div>
+      <div id="alertItems"></div>
+    </div>
+    <div class="sec-head">全部<em>品种</em></div>
+    <table class="inv-table">
+      <thead><tr><th>品种</th><th class="r">库存</th><th class="r">进价</th><th class="r">成本</th><th class="r">售价</th><th class="r">利润</th></tr></thead>
+      <tbody id="invBody"></tbody>
+      <tfoot id="invFoot"></tfoot>
+    </table>
+    <button class="back-btn" onclick="switchTab('bill')">← 返回账单</button>
+    <div class="profit-analysis" id="profitAnalysis"></div>
+    <div class="footer" style="margin-top:16px"><span>盘后库存快照</span><span id="invFooterInfo"></span></div>
+  </div>
+
+  <!-- ====== PURCHASE VIEW ====== -->
+  <div class="view" id="purView">
+    <div class="pur-masthead"><h1>进<em>货单</em></h1></div>
+    <div class="pur-block" id="purWeekBlock">
+      <div class="sec-head"><em>本周</em>进货</div>
+      <div id="purWeekContent"></div>
+    </div>
+    <div class="pur-block" id="purMonthBlock">
+      <div class="sec-head"><em>本月</em>进货</div>
+      <div id="purMonthContent"></div>
+    </div>
+    <button class="back-btn" onclick="switchTab('bill')">← 返回账单</button>
+    <div class="footer" style="margin-top:16px"><span>进货记录</span><span id="purFooterInfo"></span></div>
+  </div>
+
+  <!-- ====== TAB BAR ====== -->
+  <div class="tab-bar">
+    <button class="tab active" id="tabBill" onclick="switchTab('bill')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      账单
+    </button>
+    <button class="tab" id="tabInv" onclick="switchTab('inventory')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>
+      库存
+    </button>
+    <button class="tab" id="tabPur" onclick="switchTab('purchase')">
+      <svg class="tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+      进货单
+    </button>
+  </div>
+
+  <!-- ====== OVERLAY ====== -->
+  <div class="overlay-backdrop" id="overlayBackdrop" onclick="if(event.target===this)closeOverlay()">
+    <div class="overlay-panel" id="overlayPanel">
+      <div class="overlay-handle"></div>
+      <div class="overlay-title" id="ovTitle"></div>
+      <div class="overlay-sub" id="ovSub"></div>
+      <svg id="overlayChart" viewBox="0 0 400 60" preserveAspectRatio="none"></svg>
+      <div class="overlay-kpi-grid" id="ovKpiGrid"></div>
+      <div id="ovTrail"></div>
+      <button class="overlay-close" onclick="closeOverlay()">关闭</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+const BILLS = {"2026-06-01": {"date": "2026-06-01", "date_short": "6/1", "items": [{"name": "\u8f6f\u7ea2", "packs": 16, "revenue": 287.0, "profit": 53.4}, {"name": "\u786c\u7ea2", "packs": 14, "revenue": 236.0, "profit": 47.6}, {"name": "\u84dd\u72fc", "packs": 12, "revenue": 144.0, "profit": 30.0}, {"name": "\u5854\u5c71", "packs": 3, "revenue": 36.0, "profit": 6.6}, {"name": "\u7070\u72fc", "packs": 2, "revenue": 44.0, "profit": 6.8}, {"name": "\u714a\u8d6b\u95e8", "packs": 2, "revenue": 44.0, "profit": 5.0}, {"name": "\u4e91\u9f99", "packs": 2, "revenue": 34.0, "profit": 6.0}, {"name": "\u7d2b\u4e91", "packs": 2, "revenue": 28.0, "profit": 4.0}, {"name": "\u9ed1\u5170\u5dde", "packs": 1, "revenue": 31.0, "profit": 5.0}, {"name": "\u5927\u4e91", "packs": 1, "revenue": 24.0, "profit": 3.5}, {"name": "\u683c\u8c03", "packs": 1, "revenue": 17.0, "profit": 3.0}, {"name": "\u767d\u5229", "packs": 1, "revenue": 19.0, "profit": 1.5}], "total_packs": 57, "total_revenue": 944.0, "total_profit": 172.4, "profit_rate": 18.3, "expenses": [], "total_expense": 0}, "2026-06-02": {"date": "2026-06-02", "date_short": "6/2", "items": [{"name": "\u8f6f\u7ea2", "packs": 25, "revenue": 445.5, "profit": 80.5}, {"name": "\u84dd\u72fc", "packs": 11, "revenue": 132.0, "profit": 27.5}, {"name": "\u7070\u72fc", "packs": 9, "revenue": 198.0, "profit": 30.6}, {"name": "\u786c\u7ea2", "packs": 8, "revenue": 135.0, "profit": 27.2}, {"name": "\u767d\u5229", "packs": 4, "revenue": 80.0, "profit": 10.0}, {"name": "\u5854\u5c71", "packs": 3, "revenue": 36.0, "profit": 6.6}, {"name": "\u6ed5\u738b\u9601", "packs": 2, "revenue": 34.0, "profit": 6.0}, {"name": "\u84dd\u7816", "packs": 2, "revenue": 28.0, "profit": 4.0}, {"name": "\u7d2b\u4e91", "packs": 2, "revenue": 28.0, "profit": 4.0}, {"name": "\u94f6\u4e2d\u652f", "packs": 1, "revenue": 26.0, "profit": 5.5}, {"name": "\u7389\u6eaa", "packs": 1, "revenue": 24.0, "profit": 4.0}, {"name": "\u5927\u4e91", "packs": 1, "revenue": 24.0, "profit": 3.5}, {"name": "\u989c\u60a6", "packs": 1, "revenue": 21.0, "profit": 3.5}, {"name": "\u683c\u8c03", "packs": 1, "revenue": 17.0, "profit": 3.0}], "total_packs": 71, "total_revenue": 1228.5, "total_profit": 215.9, "profit_rate": 17.6, "expenses": [], "total_expense": 0}, "2026-06-03": {"date": "2026-06-03", "date_short": "6/3", "items": [{"name": "\u8f6f\u7ea2", "packs": 18, "revenue": 321.5, "profit": 58.7}, {"name": "\u786c\u7ea2", "packs": 17, "revenue": 288.0, "profit": 56.8}, {"name": "\u84dd\u72fc", "packs": 16, "revenue": 192.0, "profit": 40.0}, {"name": "\u7070\u72fc", "packs": 5, "revenue": 110.0, "profit": 17.0}, {"name": "\u7eaf\u51c0", "packs": 3, "revenue": 63.0, "profit": 10.5}, {"name": "\u5fc3\u60a6", "packs": 2, "revenue": 34.0, "profit": 6.0}, {"name": "\u84dd\u7816", "packs": 2, "revenue": 28.0, "profit": 4.0}, {"name": "\u767d\u5229", "packs": 2, "revenue": 40.0, "profit": 5.0}, {"name": "\u94f6\u4e2d\u652f", "packs": 1, "revenue": 26.0, "profit": 5.5}, {"name": "\u4e91\u9f99", "packs": 1, "revenue": 17.0, "profit": 3.0}, {"name": "\u5854\u5c71", "packs": 1, "revenue": 12.0, "profit": 2.2}], "total_packs": 68, "total_revenue": 1131.5, "total_profit": 208.7, "profit_rate": 18.4, "expenses": [], "total_expense": 0}, "2026-06-04": {"date": "2026-06-04", "date_short": "6/4", "items": [{"name": "\u8f6f\u7ea2", "packs": 21, "revenue": 376.5, "profit": 69.9}, {"name": "\u84dd\u72fc", "packs": 21, "revenue": 252.0, "profit": 52.5}, {"name": "\u786c\u7ea2", "packs": 15, "revenue": 252.0, "profit": 50.0}, {"name": "\u7070\u72fc", "packs": 7, "revenue": 154.0, "profit": 23.8}, {"name": "\u5854\u5c71", "packs": 5, "revenue": 60.0, "profit": 11.0}, {"name": "\u767d\u5229", "packs": 4, "revenue": 79.0, "profit": 9.0}, {"name": "\u7eaf\u51c0", "packs": 2, "revenue": 42.0, "profit": 7.0}, {"name": "\u714a\u8d6b\u95e8", "packs": 2, "revenue": 44.0, "profit": 5.0}, {"name": "\u4e91\u9f99", "packs": 1, "revenue": 17.0, "profit": 3.0}, {"name": "\u5fc3\u60a6", "packs": 1, "revenue": 17.0, "profit": 3.0}, {"name": "\u683c\u8c03", "packs": 1, "revenue": 17.0, "profit": 3.0}, {"name": "\u84dd\u5229", "packs": 1, "revenue": 20.0, "profit": 3.0}, {"name": "\u6ed5\u738b\u9601", "packs": 1, "revenue": 17.0, "profit": 3.0}], "total_packs": 82, "total_revenue": 1347.5, "total_profit": 243.2, "profit_rate": 18.0, "expenses": [], "total_expense": 0}, "2026-06-05": {"date": "2026-06-05", "date_short": "6/5", "items": [{"name": "\u8f6f\u7ea2", "packs": 23, "revenue": 413.0, "profit": 77.2}, {"name": "\u84dd\u72fc", "packs": 12, "revenue": 144.0, "profit": 30.0}, {"name": "\u7070\u72fc", "packs": 11, "revenue": 242.0, "profit": 37.4}, {"name": "\u786c\u7ea2", "packs": 9, "revenue": 152.5, "profit": 30.1}, {"name": "\u84dd\u7816", "packs": 2, "revenue": 28.0, "profit": 4.0}, {"name": "\u9ed1\u5170\u5dde", "packs": 1, "revenue": 31.0, "profit": 5.0}, {"name": "\u84dd\u5229", "packs": 1, "revenue": 20.0, "profit": 3.0}, {"name": "\u5854\u5c71", "packs": 1, "revenue": 12.0, "profit": 2.2}, {"name": "\u767d\u5229", "packs": 1, "revenue": 19.0, "profit": 1.5}], "total_packs": 61, "total_revenue": 1061.5, "total_profit": 190.4, "profit_rate": 17.9, "expenses": [], "total_expense": 0}, "2026-06-06": {"date": "2026-06-06", "date_short": "6/6", "items": [{"name": "\u84dd\u72fc", "packs": 17, "revenue": 204.0, "profit": 42.5}, {"name": "\u8f6f\u7ea2", "packs": 15, "revenue": 270.0, "profit": 51.0}, {"name": "\u786c\u7ea2", "packs": 12, "revenue": 203.0, "profit": 39.8}, {"name": "\u84dd\u7816", "packs": 4, "revenue": 56.0, "profit": 8.0}, {"name": "\u767d\u5229", "packs": 3, "revenue": 60.0, "profit": 7.5}, {"name": "\u7d2b\u4e91", "packs": 2, "revenue": 28.0, "profit": 4.0}, {"name": "\u989c\u60a6", "packs": 1, "revenue": 21.0, "profit": 3.5}, {"name": "\u7eaf\u51c0", "packs": 1, "revenue": 21.0, "profit": 3.5}, {"name": "\u7070\u72fc", "packs": 1, "revenue": 22.0, "profit": 3.4}, {"name": "\u5fc3\u60a6", "packs": 1, "revenue": 17.0, "profit": 3.0}, {"name": "\u84dd\u5229", "packs": 1, "revenue": 20.0, "profit": 3.0}, {"name": "\u683c\u8c03", "packs": 1, "revenue": 16.0, "profit": 2.0}], "total_packs": 59, "total_revenue": 938.0, "total_profit": 171.2, "profit_rate": 18.3, "expenses": [], "total_expense": 0}, "2026-06-07": {"date": "2026-06-07", "date_short": "6/7", "items": [{"name": "软红", "packs": 18, "revenue": 320.5, "profit": 57.70}, {"name": "硬红", "packs": 10, "revenue": 170.0, "profit": 34.00}, {"name": "蓝狼", "packs": 12, "revenue": 144.0, "profit": 30.00}, {"name": "灰狼", "packs": 4, "revenue": 88.0, "profit": 13.60}, {"name": "白利", "packs": 5, "revenue": 99.0, "profit": 11.50}, {"name": "蓝砖", "packs": 5, "revenue": 70.0, "profit": 10.00}, {"name": "蓝利", "packs": 3, "revenue": 60.0, "profit": 9.00}, {"name": "云龙", "packs": 2, "revenue": 34.0, "profit": 6.00}, {"name": "煊赫门", "packs": 1, "revenue": 22.0, "profit": 2.60}, {"name": "迎春", "packs": 1, "revenue": 20.0, "profit": 2.50}, {"name": "紫云", "packs": 1, "revenue": 14.0, "profit": 2.00}], "total_packs": 62, "total_revenue": 1041.5, "total_profit": 178.90, "profit_rate": 17.2, "expenses": [], "total_expense": 0}};
+const SUMMARY = [{"date": "5/27", "packs": 81, "revenue": 1357.0, "profit": 239.8, "rate": 17.7}, {"date": "5/28", "packs": 83, "revenue": 1434.0, "profit": 259.6, "rate": 18.1}, {"date": "5/29", "packs": 88, "revenue": 1492.0, "profit": 268.9, "rate": 18.0}, {"date": "5/30", "packs": 55, "revenue": 857.5, "profit": 143.6, "rate": 16.7}, {"date": "5/31", "packs": 69, "revenue": 1200.0, "profit": 211.6, "rate": 17.6}, {"date": "6/1", "packs": 57, "revenue": 944.0, "profit": 170.4, "rate": 18.1}, {"date": "6/2", "packs": 71, "revenue": 1228.5, "profit": 214.8, "rate": 17.5}, {"date": "6/3", "packs": 68, "revenue": 1131.5, "profit": 208.6, "rate": 18.4}, {"date": "6/4", "packs": 82, "revenue": 1347.5, "profit": 241.2, "rate": 17.9}, {"date": "6/5", "packs": 61, "revenue": 1061.5, "profit": 190.4, "rate": 17.9}, {"date": "6/6", "packs": 59, "revenue": 938.0, "profit": 171.2, "rate": 18.3}, {"date": "6/7", "packs": 62, "revenue": 1041.5, "profit": 178.90, "rate": 17.2}];
+const INVENTORY = {"items": [{"name": "\u8f6f\u7ea2", "stock": 134, "cost_price": "14.6", "cost": 1956.4, "price": 2412.0, "profit": 455.6}, {"name":"\u786c\u7ea2","stock":102,"cost_price":"13.6","cost":1387.2,"price":1734.0,"profit":346.8}, {"name":"白利","stock":21,"cost_price":"17.5","cost":367.5,"price":420.0,"profit":52.5}, {"name": "\u84dd\u72fc", "stock": 37, "cost_price": "9.5", "cost": 351.5, "price": 444.0, "profit": 92.5}, {"name": "\u7070\u72fc", "stock": 25, "cost_price": "18.6", "cost": 465.0, "price": 550.0, "profit": 85.0}, {"name": "\u84dd\u7816", "stock": 21, "cost_price": "12.0", "cost": 252.0, "price": 294.0, "profit": 42.0}, {"name": "\u4e91\u9f99", "stock": 18, "cost_price": "14.0", "cost": 252.0, "price": 306.0, "profit": 54.0}, {"name": "\u7d2b\u4e91", "stock": 17, "cost_price": "12.0", "cost": 204.0, "price": 238.0, "profit": 34.0}, {"name": "\u7eaf\u51c0", "stock": 15, "cost_price": "17.5", "cost": 262.5, "price": 315.0, "profit": 52.5}, {"name": "\u5fc3\u60a6", "stock": 15, "cost_price": "14.0", "cost": 210.0, "price": 255.0, "profit": 45.0}, {"name": "\u714a\u8d6b\u95e8", "stock": 11, "cost_price": "19.4", "cost": 213.4, "price": 242.0, "profit": 28.6}, {"name": "\u8fce\u6625", "stock": 9, "cost_price": "17.5", "cost": 157.5, "price": 189.0, "profit": 31.5}, {"name": "\u989c\u60a6", "stock": 7, "cost_price": "17.5", "cost": 122.5, "price": 147.0, "profit": 24.5}, {"name": "\u683c\u8c03", "stock": 6, "cost_price": "14.0", "cost": 84.0, "price": 102.0, "profit": 18.0}, {"name": "\u6ed5\u738b\u9601", "stock": 6, "cost_price": "14.0", "cost": 84.0, "price": 102.0, "profit": 18.0}, {"name": "\u84dd\u5229", "stock": 4, "cost_price": "17.0", "cost": 68.0, "price": 80.0, "profit": 12.0}, {"name": "\u94f6\u4e2d\u652f", "stock": 4, "cost_price": "20.5", "cost": 82.0, "price": 104.0, "profit": 22.0}, {"name": "\u9ed1\u5170\u5dde", "stock": 4, "cost_price": "26.0", "cost": 104.0, "price": 124.0, "profit": 20.0}, {"name": "\u9ed1\u5229", "stock": 3, "cost_price": "32.0", "cost": 96.0, "price": 111.0, "profit": 15.0}, {"name": "\u5927\u4e91", "stock": 3, "cost_price": "20.5", "cost": 61.5, "price": 72.0, "profit": 10.5}, {"name": "\u6c5f\u5357\u97f5", "stock": 3, "cost_price": "23.0", "cost": 69.0, "price": 87.0, "profit": 18.0}, {"name": "\u7389\u6eaa", "stock": 3, "cost_price": "20.0", "cost": 60.0, "price": 72.0, "profit": 12.0}], "total_stock": 468, "total_cost": 6910.0, "total_price": 8400.0, "total_profit": 1490.0};
+const PURCHASES = [{"date":"2026-06-07","items":[{"name":"白利","qty":20,"unit":"包","unit_price":17.5,"subtotal":350.00}],"total_amount":350.00}];
+const DATES = ['2026-06-01', '2026-06-02', '2026-06-03', '2026-06-04', '2026-06-05', '2026-06-06', '2026-06-07'];
+const TOP_NAMES = ["\u8f6f\u7ea2","\u786c\u7ea2","\u84dd\u72fc","\u7070\u72fc"];
+
+let currentIdx = DATES.length - 1;
+let activeTab = "bill";
+
+function drawSparkline(svgId, data, w, h, color){
+  var svg = document.getElementById(svgId);
+  if(!svg||data.length<2){if(svg)svg.innerHTML='';return;}
+  var max = Math.max.apply(null,data.concat([1]));
+  var min = Math.min.apply(null,data.concat([0]));
+  var range = max-min||1;
+  var padX=2, padY=4;
+  var xs=[], ys=[];
+  for(var i=0;i<data.length;i++){
+    xs.push(padX+(i/(data.length-1))*(w-2*padX));
+    ys.push(padY+((max-data[i])/range)*(h-2*padY));
+  }
+  var d = "M"+xs[0]+","+ys[0];
+  for(var j=1;j<xs.length;j++)d+=" L"+xs[j]+","+ys[j];
+  svg.innerHTML = '<path d="'+d+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  svg.innerHTML += '<circle cx="'+xs[xs.length-1]+'" cy="'+ys[ys.length-1]+'" r="3" fill="'+color+'"/>';
+}
+
+function render(dateKey){
+  var bill = BILLS[dateKey];
+  if(!bill){console.error("No bill for", dateKey);return;}
+
+  document.getElementById("dateDisplay").innerHTML = bill.date + '<small>' + dayOfWeek(bill.date) + '</small>';
+  document.getElementById("prevBtn").disabled = (currentIdx === 0);
+  document.getElementById("nextBtn").disabled = (currentIdx === DATES.length - 1);
+
+  // Month summary
+  var monthPacks=0, monthRev=0, monthProfit=0, monthDays=0;
+  for(var ms=0;ms<SUMMARY.length;ms++){
+    if(SUMMARY[ms].date.indexOf("6/")===0){
+      monthPacks+=SUMMARY[ms].packs;
+      monthRev+=SUMMARY[ms].revenue;
+      monthProfit+=SUMMARY[ms].profit;
+      monthDays++;
+    }
+  }
+  var avgDailyProfit = monthDays>0?(monthProfit/monthDays).toFixed(1):"0.0";
+  document.getElementById("monthSummary").innerHTML =
+    '<div class="ms-title">6\u6708\u6982\u89c8</div>'+
+    '<div class="ms-grid">'+
+    '<div class="ms-card"><div class="ms-val red">'+monthPacks+'</div><div class="ms-lbl">\u603b\u9500\u91cf / \u5305</div></div>'+
+    '<div class="ms-card"><div class="ms-val">\u00a5'+monthRev.toFixed(1)+'</div><div class="ms-lbl">\u603b\u6536\u5165</div></div>'+
+    '<div class="ms-card"><div class="ms-val red">\u00a5'+monthProfit.toFixed(1)+'</div><div class="ms-lbl">\u603b\u5229\u6da6</div></div>'+
+    '<div class="ms-card"><div class="ms-val">\u00a5'+avgDailyProfit+'</div><div class="ms-lbl">\u65e5\u5747\u5229\u6da6</div></div>'+
+    '</div>';
+
+  document.getElementById("kpiRow").innerHTML =
+    '<div class="kpi-cell"><div class="val red">' + bill.total_packs + '</div><div class="lbl">\u4eca\u65e5\u9500\u91cf / \u5305</div></div>' +
+    '<div class="kpi-cell"><div class="val">\u00a5' + bill.total_revenue.toFixed(1) + '</div><div class="lbl">\u4eca\u65e5\u6536\u5165</div></div>' +
+    '<div class="kpi-cell"><div class="val red">\u00a5' + bill.total_profit.toFixed(2) + '</div><div class="lbl">\u5229\u6da6 \u00b7 ' + bill.profit_rate + '%</div></div>' +
+    '<div class="kpi-cell"><div class="val">' + INVENTORY.total_stock + '</div><div class="lbl">\u5e93\u5b58 / \u5305</div></div>';
+
+  var top4 = bill.items.slice(0,4);
+  var labels = ["No.1 \u51a0\u519b","No.2 \u5229\u6da6","No.3 \u4e3b\u529b","No.4"];
+  var heroHTML = "";
+  for(var i=0;i<top4.length;i++){
+    var item = top4[i];
+    heroHTML += '<div class="hero-card" onclick="openDetail(\x27'+item.name+'\x27)"><div class="rank">'+labels[i]+'</div><div class="name">'+item.name+'</div><div class="pack-badge">'+item.packs+'<small>\u5305</small></div><div class="meta-line">\u6536\u5165 <span>'+item.revenue.toFixed(1)+'</span> \u00b7 \u5229\u6da6 <span>'+item.profit.toFixed(2)+'</span></div></div>';
+  }
+  document.getElementById("heroStrip").innerHTML = heroHTML;
+
+  var billHTML = "";
+  for(var j=0;j<bill.items.length;j++){
+    var it = bill.items[j];
+    var hl = TOP_NAMES.indexOf(it.name)>=0;
+    billHTML += '<tr'+(hl?' class="hl"':'')+'><td class="name" onclick="openDetail(\x27'+it.name+'\x27)">'+it.name+'</td><td class="r packs">'+it.packs+'</td><td class="r rev">'+it.revenue.toFixed(1)+'</td><td class="r profit">+'+it.profit.toFixed(2)+'</td></tr>';
+  }
+  document.getElementById("billBody").innerHTML = billHTML;
+  document.getElementById("billFoot").innerHTML = '<tr><td>\u5408\u8ba1</td><td class="r">'+bill.total_packs+'</td><td class="r">'+bill.total_revenue.toFixed(1)+'</td><td class="r">'+bill.total_profit.toFixed(2)+'</td></tr>';
+
+  var expHTML = '';
+  var expenses = bill.expenses || [];
+  if(expenses.length > 0){
+    expHTML = '<div class="sec-head" style="font-size:clamp(16px,2vw,22px)"><em>\u652f\u51fa</em>\u5907\u6ce8</div>';
+    expHTML += '<table class="exp-table"><thead><tr><th>\u5907\u6ce8</th><th class="r">\u91d1\u989d</th></tr></thead><tbody>';
+    for(var e=0;e<expenses.length;e++){
+      expHTML += '<tr><td>'+expenses[e].desc+'</td><td class="r">-\u00a5'+expenses[e].amount.toFixed(1)+'</td></tr>';
+    }
+    expHTML += '</tbody><tfoot><tr><td>\u652f\u51fa\u5408\u8ba1</td><td class="r">-\u00a5'+bill.total_expense.toFixed(1)+'</td></tr></tfoot></table>';
+  }
+  document.getElementById("expenseSection").innerHTML = expHTML;
+
+  var trendRev = [];
+  var sl = SUMMARY.slice(-7);
+  for(var k=0;k<sl.length;k++)trendRev.push(sl[k].revenue);
+  drawSparkline("trendChart", trendRev, 400, 44, "var(--red)");
+
+  var sumHTML = "", tP=0, tR=0, tPf=0;
+  for(var m=0;m<SUMMARY.length;m++){
+    var row = SUMMARY[m];
+    var active = row.date === bill.date_short;
+    tP+=row.packs; tR+=row.revenue; tPf+=row.profit;
+    sumHTML += '<tr'+(active?' class="active"':'')+'><td class="date">'+row.date+(active?' \u2605':'')+'</td><td class="r packs">'+row.packs+'</td><td class="r">'+row.revenue.toFixed(1)+'</td><td class="r">+'+row.profit.toFixed(2)+'</td><td class="r">'+row.rate.toFixed(1)+'%</td></tr>';
+  }
+  document.getElementById("sumBody").innerHTML = sumHTML;
+  var avgR = tR>0?(tPf/tR*100).toFixed(1):"0.0";
+  document.getElementById("sumFoot").innerHTML = '<tr><td>\u7d2f\u8ba1</td><td class="r">'+tP+'</td><td class="r">'+tR.toFixed(1)+'</td><td class="r">+'+tPf.toFixed(2)+'</td><td class="r">'+avgR+'%</td></tr>';
+  document.getElementById("footerInfo").textContent = SUMMARY.length+'\u5929 \u00b7 '+tP+'\u5305 \u00b7 \u00a5'+tPf.toFixed(2);
+}
+
+function dayOfWeek(d){
+  var days = ["\u661f\u671f\u65e5","\u661f\u671f\u4e00","\u661f\u671f\u4e8c","\u661f\u671f\u4e09","\u661f\u671f\u56db","\u661f\u671f\u4e94","\u661f\u671f\u516d"];
+  return days[new Date(d).getDay()];
+}
+function prevDay(){if(currentIdx>0){currentIdx--;render(DATES[currentIdx]);}}
+function nextDay(){if(currentIdx<DATES.length-1){currentIdx++;render(DATES[currentIdx]);}}
+
+var ALERT_THRESHOLDS = {
+  "\u8f6f\u7ea2":15,"\u84dd\u72fc":15,"\u786c\u7ea2":15,
+  "\u7070\u72fc":10,
+  "\u84dd\u7816":3,"\u4e91\u9f99":3,"\u7d2b\u4e91":3,"\u7eaf\u51c0":3,"\u5fc3\u60a6":3,"\u714a\u8d6b\u95e8":3,"\u8fce\u6625":3,"\u84dd\u5229":3,"\u989c\u60a6":3,"\u767d\u5229":3,
+  "\u683c\u8c03":1,"\u6ed5\u738b\u9601":1,"\u94f6\u4e2d\u652f":1,"\u9ed1\u5170\u5dde":1,"\u9ed1\u5229":1,"\u5927\u4e91":1,"\u6c5f\u5357\u97f5":1,"\u7389\u6eaa":1
+};
+
+function renderInventory(){
+  document.getElementById("invTotalBig").textContent = INVENTORY.total_stock;
+
+  var topItems = [];
+  for(var i=0;i<INVENTORY.items.length;i++){
+    if(TOP_NAMES.indexOf(INVENTORY.items[i].name)>=0)topItems.push(INVENTORY.items[i]);
+  }
+  var heroHTML = "";
+  for(var j=0;j<topItems.length;j++){
+    var item=topItems[j];
+    heroHTML += '<div class="inv-hero-item" onclick="openDetail(\x27'+item.name+'\x27)"><div class="iname">'+item.name+'</div><div class="inum">'+item.stock+'</div><div class="ilbl">\u5305</div></div>';
+  }
+  document.getElementById("invHeroRow").innerHTML = heroHTML;
+
+  var alerts = [];
+  for(var k=0;k<INVENTORY.items.length;k++){
+    var it=INVENTORY.items[k];
+    var th=ALERT_THRESHOLDS[it.name];
+    if(th!==undefined&&it.stock<th) alerts.push({name:it.name,stock:it.stock,threshold:th});
+  }
+  alerts.sort(function(a,b){return a.stock-b.stock;});
+  var alertSection = document.getElementById("alertSection");
+  if(alerts.length>0){
+    alertSection.classList.add("show");
+    var alertHTML = "";
+    for(var a=0;a<alerts.length;a++){
+      alertHTML += '<span class="alert-item">'+alerts[a].name+' <span class="alert-num">'+alerts[a].stock+'/'+alerts[a].threshold+'</span></span>';
+    }
+    document.getElementById("alertItems").innerHTML = alertHTML;
+  }else{
+    alertSection.classList.remove("show");
+  }
+
+  var invHTML = "";
+  for(var m=0;m<INVENTORY.items.length;m++){
+    var itm=INVENTORY.items[m];
+    var hl=TOP_NAMES.indexOf(itm.name)>=0;
+    var alert=null;
+    for(var aa=0;aa<alerts.length;aa++){if(alerts[aa].name===itm.name){alert=alerts[aa];break;}}
+    var alertCls=alert?' alert-cell':'';
+    var rowCls='';
+    if(hl)rowCls=' class="hl"';
+    else if(m%2===1)rowCls=' class="even"';
+    invHTML += '<tr'+rowCls+'><td class="name'+alertCls+'" onclick="openDetail(\x27'+itm.name+'\x27)">'+itm.name+'</td><td class="r stock'+alertCls+'">'+itm.stock+'</td><td class="r">'+itm.cost_price+'</td><td class="r cost">'+itm.cost.toFixed(1)+'</td><td class="r price">'+itm.price.toFixed(1)+'</td><td class="r profit">'+itm.profit.toFixed(1)+'</td></tr>';
+  }
+  document.getElementById("invBody").innerHTML = invHTML;
+  document.getElementById("invFoot").innerHTML = '<tr><td>\u5408\u8ba1</td><td class="r">'+INVENTORY.total_stock+'</td><td class="r">\u2014</td><td class="r cost">'+INVENTORY.total_cost.toFixed(1)+'</td><td class="r price">'+INVENTORY.total_price.toFixed(1)+'</td><td class="r profit">'+INVENTORY.total_profit.toFixed(1)+'</td></tr>';
+  document.getElementById("invFooterInfo").textContent = INVENTORY.items.length+'\u4e2a\u54c1\u79cd \u00b7 \u00a5'+INVENTORY.total_price.toFixed(1) + (alerts.length>0 ? ' \u00b7 '+alerts.length+'\u4e2a\u544a\u6025' : '');
+  
+  // Profit analysis
+  var analysis = [];
+  for(var ai=0;ai<INVENTORY.items.length;ai++){
+    var item = INVENTORY.items[ai];
+    var cost = parseFloat(item.cost_price);
+    var price = item.price/item.stock;
+    var margin = (price-cost)/price*100;
+    var monthSales=0, monthProfit=0;
+    for(var d=0;d<DATES.length;d++){
+      var bill = BILLS[DATES[d]];
+      if(!bill)continue;
+      for(var bi=0;bi<bill.items.length;bi++){
+        if(bill.items[bi].name===item.name){
+          monthSales+=bill.items[bi].packs;
+          monthProfit+=bill.items[bi].profit;
+          break;
+        }
+      }
+    }
+    analysis.push({
+      name:item.name,
+      cost:cost,
+      price:Math.round(price),
+      margin:margin.toFixed(1),
+      sales:monthSales,
+      profit:monthProfit.toFixed(1),
+      hasSales:monthSales>0
+    });
+  }
+  analysis.sort(function(a,b){return parseFloat(b.margin)-parseFloat(a.margin);});
+  var topCount = Math.min(3, analysis.length);
+  var paHTML = '<div class="pa-title"><em>\u54c1\u79cd\u5229\u6da6</em>\u5206\u6790</div>';
+  paHTML += '<table class="pa-table"><thead><tr><th>\u54c1\u79cd</th><th class="r">\u8fdb\u4ef7</th><th class="r">\u552e\u4ef7</th><th class="r">\u6bdb\u5229\u7387</th><th class="r">\u6708\u9500\u91cf</th><th class="r">\u6708\u6bdb\u5229</th></tr></thead><tbody>';
+  for(var pa=0;pa<analysis.length;pa++){
+    var a = analysis[pa];
+    var rowClass = a.hasSales?'':'gray';
+    var marginClass = pa<topCount?'green':'';
+    paHTML += '<tr'+(rowClass?' class="'+rowClass+'"':'')+'>'+
+      '<td class="name">'+a.name+'</td>'+
+      '<td class="r">'+a.cost+'</td>'+
+      '<td class="r">'+a.price+'</td>'+
+      '<td class="r '+marginClass+'">'+a.margin+'%</td>'+
+      '<td class="r">'+a.sales+'</td>'+
+      '<td class="r">'+a.profit+'</td>'+
+      '</tr>';
+  }
+  paHTML += '</tbody></table>';
+  document.getElementById("profitAnalysis").innerHTML = paHTML;
+}
+
+function renderPurchase(){
+  if(PURCHASES.length === 0){
+    document.getElementById("purWeekContent").innerHTML = '<div class="pur-empty">\u6682\u65e0\u8fdb\u8d27\u8bb0\u5f55</div>';
+    document.getElementById("purMonthContent").innerHTML = '<div class="pur-empty">\u6682\u65e0\u8fdb\u8d27\u8bb0\u5f55</div>';
+    document.getElementById("purFooterInfo").textContent = '0\u6761\u8bb0\u5f55';
+    return;
+  }
+
+  var now = new Date("2026-06-07");
+  var dayOfWeek = now.getDay();
+  var mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  var monday = new Date(now);
+  monday.setDate(now.getDate() + mondayOffset);
+  var mondayStr = monday.toISOString().slice(0,10);
+
+  var sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  var sundayStr = sunday.toISOString().slice(0,10);
+
+  var monthStart = "2026-06-01";
+
+  function filterByRange(records, start, end){
+    return records.filter(function(r){return r.date >= start && r.date <= end;});
+  }
+
+  function buildTable(records){
+    if(records.length === 0) return '<div class="pur-empty">\u6682\u65e0\u8fdb\u8d27\u8bb0\u5f55</div>';
+    var rows = '';
+    var grandTotal = 0;
+    for(var i=0;i<records.length;i++){
+      var rec = records[i];
+      for(var j=0;j<rec.items.length;j++){
+        var it = rec.items[j];
+        rows += '<tr><td class="name">'+rec.date.slice(5)+'</td><td>'+it.name+'</td><td class="r">'+it.qty+it.unit+'</td><td class="r">\u00a5'+it.unit_price.toFixed(1)+'</td><td class="r">\u00a5'+it.subtotal.toFixed(1)+'</td></tr>';
+      }
+      grandTotal += rec.total_amount;
+    }
+    return '<table class="pur-table"><thead><tr><th>\u65e5\u671f</th><th>\u54c1\u79cd</th><th class="r">\u6570\u91cf</th><th class="r">\u8fdb\u4ef7</th><th class="r">\u5c0f\u8ba1</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td>\u5408\u8ba1</td><td></td><td class="r"></td><td class="r"></td><td class="r">\u00a5'+grandTotal.toFixed(1)+'</td></tr></tfoot></table>';
+  }
+
+  var weekRecords = filterByRange(PURCHASES, mondayStr, sundayStr);
+  var monthRecords = filterByRange(PURCHASES, monthStart, "2026-06-30");
+
+  document.getElementById("purWeekContent").innerHTML = buildTable(weekRecords);
+  document.getElementById("purMonthContent").innerHTML = buildTable(monthRecords);
+  document.getElementById("purFooterInfo").textContent = PURCHASES.length+'\u6761\u8bb0\u5f55 \u00b7 \u00a5'+(function(){var t=0;for(var i=0;i<PURCHASES.length;i++)t+=PURCHASES[i].total_amount;return t.toFixed(1);})();
+}
+
+function openDetail(name){
+  document.getElementById("overlayBackdrop").classList.add("show");
+  document.body.style.overflow = "hidden";
+  document.getElementById("ovTitle").textContent = name;
+
+  var dates=[], sales=[], revenues=[], profits=[];
+  for(var i=0;i<DATES.length;i++){
+    var bill = BILLS[DATES[i]];
+    if(!bill)continue;
+    for(var j=0;j<bill.items.length;j++){
+      if(bill.items[j].name===name){
+        dates.push(bill.date_short);
+        sales.push(bill.items[j].packs);
+        revenues.push(bill.items[j].revenue);
+        profits.push(bill.items[j].profit);
+        break;
+      }
+    }
+  }
+
+  var invItem = null;
+  for(var k=0;k<INVENTORY.items.length;k++){
+    if(INVENTORY.items[k].name===name){invItem=INVENTORY.items[k];break;}
+  }
+
+  var totalPacks = sales.reduce(function(a,b){return a+b;},0);
+  var totalRev = revenues.reduce(function(a,b){return a+b;},0);
+  var totalProf = profits.reduce(function(a,b){return a+b;},0);
+
+  document.getElementById("ovSub").textContent = 
+    (invItem?'\u5e93\u5b58 '+invItem.stock+' \u5305 \u00b7 ':'') + '\u7d2f\u8ba1 ' + totalPacks + ' \u5305 \u00b7 \u00a5' + totalProf.toFixed(2);
+
+  drawSparkline("overlayChart", sales.length>1?sales:(sales.length===1?sales.concat([0]):[0,0]), 400, 60, "var(--red)");
+
+  var latestSales = sales.length>0?sales[sales.length-1]:0;
+  var latestProfit = profits.length>0?profits[profits.length-1]:0;
+  var stockVal = invItem?invItem.stock:"\u2014";
+  var kpiHTML = 
+    '<div class="overlay-kpi"><div class="ok-val red">'+latestSales+'</div><div class="ok-lbl">\u5f53\u65e5\u9500\u91cf</div></div>'+
+    '<div class="overlay-kpi"><div class="ok-val">\u00a5'+latestProfit.toFixed(2)+'</div><div class="ok-lbl">\u5f53\u65e5\u5229\u6da6</div></div>'+
+    '<div class="overlay-kpi"><div class="ok-val">'+stockVal+'</div><div class="ok-lbl">\u5f53\u524d\u5e93\u5b58</div></div>';
+  document.getElementById("ovKpiGrid").innerHTML = kpiHTML;
+
+  // --- Inventory Trail ---
+  var dayData = [];
+  for(var d=0;d<DATES.length;d++){
+    var dk = DATES[d];
+    var bill = BILLS[dk];
+    var sale = 0;
+    if(bill){
+      for(var s=0;s<bill.items.length;s++){
+        if(bill.items[s].name===name){sale=bill.items[s].packs;break;}
+      }
+    }
+    var purchase = 0;
+    for(var p=0;p<PURCHASES.length;p++){
+      if(PURCHASES[p].date===dk){
+        for(var q=0;q<PURCHASES[p].items.length;q++){
+          if(PURCHASES[p].items[q].name===name){purchase+=PURCHASES[p].items[q].qty;}
+        }
+      }
+    }
+    dayData.push({date_short:bill?bill.date_short:dk.slice(5),sale:sale,purchase:purchase});
+  }
+  // reverse compute end stocks
+  var curStock = invItem?invItem.stock:0;
+  for(var r=dayData.length-1;r>=0;r--){
+    dayData[r].endStock = curStock;
+    curStock = curStock + dayData[r].sale - dayData[r].purchase;
+  }
+  // render trail table
+  var trailHTML = '<div class="ov-trail-section"><div class="ov-trail-title">\u5e93\u5b58\u53d8\u5316</div>';
+  trailHTML += '<table class="ov-trail-table"><thead><tr><th>\u65e5\u671f</th><th>\u5356\u51fa</th><th>\u8fdb\u8d27</th><th>\u7ed3\u675f\u5e93\u5b58</th></tr></thead><tbody>';
+  for(var t=0;t<dayData.length;t++){
+    var dd = dayData[t];
+    trailHTML += '<tr><td>'+dd.date_short+'</td><td>'+dd.sale+'</td><td'+(dd.purchase>0?' class="pur-col"':'')+'>'+(dd.purchase>0?dd.purchase:'0')+'</td><td class="end-col">'+dd.endStock+'</td></tr>';
+  }
+  trailHTML += '</tbody></table></div>';
+  document.getElementById("ovTrail").innerHTML = trailHTML;
+}
+
+function closeOverlay(){
+  document.getElementById("overlayBackdrop").classList.remove("show");
+  document.body.style.overflow = "";
+}
+
+function switchTab(tab){
+  activeTab = tab;
+  document.getElementById("billView").classList.toggle("active", tab==="bill");
+  document.getElementById("invView").classList.toggle("active", tab==="inventory");
+  document.getElementById("purView").classList.toggle("active", tab==="purchase");
+  document.getElementById("tabBill").classList.toggle("active", tab==="bill");
+  document.getElementById("tabInv").classList.toggle("active", tab==="inventory");
+  document.getElementById("tabPur").classList.toggle("active", tab==="purchase");
+  if(tab==="inventory") renderInventory();
+  if(tab==="bill") render(DATES[currentIdx]);
+  if(tab==="purchase") renderPurchase();
+  window.scrollTo(0,0);
+}
+
+// Init
+render(DATES[currentIdx]);
+</script>
+</body>
+</html>
