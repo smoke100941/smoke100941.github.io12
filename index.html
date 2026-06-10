@@ -822,9 +822,28 @@ function renderPurchase(){
 /* ---- STOCK EDIT ---- */
 var _editConfirmed = false;
 
+function getInvChecksum(){
+  var parts=[];
+  for(var i=0;i<INVENTORY.items.length;i++){
+    var it=INVENTORY.items[i];
+    parts.push(it.name+":"+it.stock+":"+it.cost+":"+it.price);
+  }
+  parts.sort();
+  return parts.join("|");
+}
 function applyInventoryEdits(){
+  var curChecksum=getInvChecksum();
+  var storedChecksum=localStorage.getItem("inventoryChecksum");
+  if(!storedChecksum){
+    localStorage.setItem("inventoryChecksum",curChecksum);
+  }
   var saved = localStorage.getItem("inventoryEdits");
   if(!saved) return false;
+  if(storedChecksum && storedChecksum!==curChecksum){
+    localStorage.removeItem("inventoryEdits");
+    localStorage.setItem("inventoryChecksum",curChecksum);
+    return false;
+  }
   try{
     var edits = JSON.parse(saved);
     for(var i=0;i<INVENTORY.items.length;i++){
@@ -896,6 +915,7 @@ function confirmStockEdit(name, inputEl){
   try{edits=JSON.parse(localStorage.getItem("inventoryEdits")||"{}");}catch(e){}
   edits[name]={stock:newStock,cost:item.cost,price:item.price,profit:item.profit};
   localStorage.setItem("inventoryEdits",JSON.stringify(edits));
+  localStorage.setItem("inventoryChecksum",getInvChecksum());
   recalcInvTotals();
   renderInventory();
   document.getElementById("stockEditWarning").classList.add("show");
